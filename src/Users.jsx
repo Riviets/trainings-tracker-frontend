@@ -1,58 +1,72 @@
-import React, { useState, useEffect } from 'react'
-import { fetchUsers, addUser, getUserInfoById } from './services/userService'
+import React, { useState, useEffect } from 'react';
+import { fetchUsers, addUser, getUserInfoById, updateUser, deleteUser } from './services/userService';
 import AddUserModal from './AddUserModal';
 
 function UsersList() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [newUser, setNewUser] = useState({ username: '', age: '', weight: '', height: '' });
   const [selectedUser, setSelectedUser] = useState(null);
-  const [userModalVisible, setUserModalVisible] = useState(false)
+  const [isUserModalOpen, setUserModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
 
   useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const data = await fetchUsers();
-        setUsers(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadUsers();
   }, []);
 
-  const handleChange = (e) => {
-    setNewUser({ ...newUser, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const loadUsers = async () => {
     try {
-      const createdUser = await addUser(newUser);
-      setUsers([...users, createdUser]);
-      setNewUser({ username: '', age: '', weight: '', height: '' });
+      setLoading(true);
+      const data = await fetchUsers();
+      setUsers(data);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
-
-  const handleAddUser = async () => {
-    try{
-      setUserModalVisible(true)
-    }
-    catch(err){
-      setError(err.message)
-    }
-  }
 
   const handleViewUserInfo = async (userId) => {
     try {
       const userInfo = await getUserInfoById(userId);
       setSelectedUser(userInfo);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    try {
+      await deleteUser(userId);
+      setUsers(users.filter(user => user.id !== userId));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleEditUser = async (user) => {
+    setEditingUser(user);
+    setIsEditMode(true);
+    setUserModalOpen(true);
+  };
+
+  const handleAddUser = () => {
+    setEditingUser(null);
+    setIsEditMode(false);
+    setUserModalOpen(true);
+  };
+
+  const handleUserSubmit = async (userData) => {
+    try {
+      if (isEditMode) {
+        const updatedUser = await updateUser(editingUser.id, userData);
+        setUsers(users.map(user => (user.id === editingUser.id ? updatedUser : user)));
+      } else {
+        const newUser = await addUser(userData);
+        setUsers([...users, newUser]);
+      }
+      setUserModalOpen(false);
     } catch (err) {
       setError(err.message);
     }
@@ -67,12 +81,24 @@ function UsersList() {
       <ul>
         {users.map((user) => (
           <li key={user.id}>
-            <button onClick={() => handleViewUserInfo(user.id)}>{user.username}, {user.age} </button>
+            <button onClick={() => handleViewUserInfo(user.id)}>{user.username}, {user.age}</button>
+            <button onClick={() => handleEditUser(user)}>Edit</button>
+            <button onClick={() => handleDeleteUser(user.id)}>Delete</button>
           </li>
         ))}
       </ul>
 
-        <button onClick={handleAddUser}>Add user</button>
+      <button onClick={handleAddUser}>Add User</button>
+
+      {isUserModalOpen && (
+        <AddUserModal
+          isOpen={isUserModalOpen}
+          setUserModalOpen={setUserModalOpen}
+          onSubmit={handleUserSubmit}
+          initialData={editingUser}
+          isEditMode={isEditMode}
+        />
+      )}
 
       {selectedUser && (
         <div>
@@ -84,8 +110,6 @@ function UsersList() {
           <button onClick={() => setSelectedUser(null)}>Close</button>
         </div>
       )}
-
-      {userModalVisible && <AddUserModal/>}
     </div>
   );
 }

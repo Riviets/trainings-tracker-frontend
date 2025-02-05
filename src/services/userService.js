@@ -37,3 +37,23 @@ export const getUserInfoById = async (userId) => {
         throw new Error('Error fetching user info');
     }
 };
+
+export const updateUser = async (userId, updatedData) => {
+    try {
+      const response = await axios.put(`${API_URL}/${userId}`, updatedData, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return response.data;
+    } catch (err) {
+      throw new Error('Error updating user');
+    }
+  };
+
+export const deleteUser = async (userId) => {
+    try{
+        await axios.delete(`${API_URL}/${userId}`)
+    }
+    catch(err){
+        throw new Error('Error deleting user')
+    }
+}
